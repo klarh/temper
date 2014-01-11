@@ -8,12 +8,11 @@ import Data.Monoid (mconcat)
 import Data.Ord (Ordering(..), compare)
 import Data.Text (Text(..))
 import qualified Data.Text as T
-import qualified Data.Text.IO as IT (readFile, putStrLn)
-import qualified Data.Text.Internal as LTI
+import qualified Data.Text.IO as IT (readFile, hPutStrLn)
 import Data.Text.Lazy.Builder (Builder(..), fromLazyText, toLazyText)
 import System.Console.CmdArgs
 import System.FilePath.Posix(joinPath)
-import System.IO (FilePath(..))
+import System.IO (FilePath(..), IOMode(..), stdout, openFile, hClose)
 import Text.Parsec.Prim (parse)
 import Text.Temper
 
@@ -30,9 +29,12 @@ main = do
 
   let result = parse elements "" cs
       result' = case result of
-        Left err -> T.pack . show $ err
+        Left err -> error . show $ err
         Right ts -> T.concat $ encodeElement <$> ts
 
-  IT.putStrLn result'
+  target <- case outFile of
+    "" -> return stdout
+    f -> openFile f WriteMode
 
-  return ()
+  IT.hPutStrLn target result'
+  hClose target
