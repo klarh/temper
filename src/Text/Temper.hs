@@ -82,7 +82,7 @@ textNode::Int->Parser Element
 textNode minimumIndent = do
   _ <- Text.Parsec.count minimumIndent onlySpace
   addIndent <- Prelude.length <$> many onlySpace
-  _ <- char '$' >> many onlySpace
+  _ <- char '$'
   rest <- many . noneOf $ ['\r', '\n']
   _ <- many (try (many onlySpace >> newline))
   return (TextNode . T.pack $ rest)
@@ -116,7 +116,7 @@ encodeElement (Tag name ident classes attributes children) =
       | otherwise = " class=\"" `T.append` T.unwords classes `T.snoc` '"'
     attributes' = T.concat $ T.cons ' ' . translateAttr <$> M.toList attributes
     translateAttr (name, val) = name `T.append` "=\"" `T.append` val `T.snoc` '"'
-    children' = T.concat $ encodeElement <$> children
+    children' = T.unlines $ encodeElement <$> children
     closure = "</" `T.append` name `T.snoc` '>'
 encodeElement (TextNode conts) = conts
 encodeElement (SpecialTag conts) = "<!" `T.append` conts `T.snoc` '>'
