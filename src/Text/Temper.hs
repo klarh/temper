@@ -94,8 +94,20 @@ specialTag = do
   _ <- many (try (many onlySpace >> newline))
   return (SpecialTag . T.pack $ rest)
 
+comment::Parser Text
+comment = do
+  _ <- try (many onlySpace >> char '#')
+  rest <- many . noneOf $ ['\r', '\n']
+  _ <- many (try (many onlySpace >> newline))
+  return (T.pack rest)
+
+comments = many comment
+
 element::Int->Parser Element
-element minimumIndent = try specialTag <|> try (textNode minimumIndent) <|> try (closedTag minimumIndent) <|> try (tag minimumIndent)
+element minimumIndent = do
+  _ <- comments
+  result <- try specialTag <|> try (textNode minimumIndent) <|> try (closedTag minimumIndent) <|> try (tag minimumIndent)
+  return result
 
 elements'::Int->Parser [Element]
 elements' minimumIndent = many $ element minimumIndent
