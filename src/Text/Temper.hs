@@ -61,7 +61,6 @@ tag minimumIndent = do
   _ <- many onlySpace
   attributes <- tagAttributes
   textChild <- optionMaybe (many onlySpace >> textNode 0)
-  _ <- many (try (many onlySpace >> newline))
   children'' <- elements' (minimumIndent + addIndent + 1)
   let children' = case textChild of
         Just c -> c:children''
@@ -71,46 +70,41 @@ tag minimumIndent = do
 closedTag::Int->Parser Element
 closedTag minimumIndent = do
   _ <- Text.Parsec.count minimumIndent onlySpace
-  addIndent <- Prelude.length <$> many onlySpace
-  initialTag <- tagStart
-  _ <- many onlySpace
-  attributes <- tagAttributes
-  _ <- many onlySpace >> char '/' >> many (try (many onlySpace >> newline))
+  initialTag <- skipMany onlySpace >> tagStart
+  attributes <- many onlySpace >> tagAttributes
+  _ <- many onlySpace >> char '/' >> many onlySpace
   return (initialTag {classes=Prelude.reverse . classes $ initialTag, attributes=attributes, children=[]})
 
 textNode::Int->Parser Element
 textNode minimumIndent = do
-  _ <- Text.Parsec.count minimumIndent onlySpace
-  addIndent <- Prelude.length <$> many onlySpace
-  _ <- char '$'
+  _ <- Text.Parsec.count minimumIndent onlySpace >> skipMany onlySpace >> char '$'
   rest <- many . noneOf $ ['\r', '\n']
-  _ <- many (try (many onlySpace >> newline))
   return (TextNode . T.pack $ rest)
 
 specialTag::Parser Element
 specialTag = do
   _ <- char '!'
   rest <- many . noneOf $ ['\r', '\n']
-  _ <- many (try (many onlySpace >> newline))
   return (SpecialTag . T.pack $ rest)
 
-comment::Parser Text
+comment::Parser String
 comment = do
-  _ <- try (many onlySpace >> char '#')
+  _ <- many onlySpace >> char '#'
   rest <- many . noneOf $ ['\r', '\n']
-  _ <- many (try (many onlySpace >> newline))
-  return (T.pack rest)
+  return rest
 
-comments = many comment
+emptyLine::Parser Char
+emptyLine = many onlySpace >> newline
 
 element::Int->Parser Element
 element minimumIndent = do
-  _ <- comments
+  -- _ <- (many onlySpace <|> comment) `sepBy` newline
+  skipMany . try $ (comment >> newline) <|> emptyLine
   result <- try specialTag <|> try (textNode minimumIndent) <|> try (closedTag minimumIndent) <|> try (tag minimumIndent)
   return result
 
 elements'::Int->Parser [Element]
-elements' minimumIndent = many $ element minimumIndent
+elements' minimumIndent = many . try $ element minimumIndent
 
 elements::Parser [Element]
 elements = elements' 0
