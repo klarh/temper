@@ -98,7 +98,6 @@ emptyLine = many onlySpace >> newline
 
 element::Int->Parser Element
 element minimumIndent = do
-  -- _ <- (many onlySpace <|> comment) `sepBy` newline
   skipMany . try $ (comment >> newline) <|> emptyLine
   result <- try specialTag <|> try (textNode minimumIndent) <|> try (closedTag minimumIndent) <|> try (tag minimumIndent)
   return result
